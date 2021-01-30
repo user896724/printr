@@ -1,0 +1,240 @@
+<script>
+import {onMount} from "svelte";
+import {map} from "../utils/collections";
+import dedent from "../utils/dedent";
+import {unshift} from "../utils/arrayMethods";
+import webSocket from "../utils/webSocket";
+import Modal from "../components/Modal.svelte";
+
+export let key;
+export let wsConfig;
+
+let postUrl;
+let logs = [];
+let readmeModal;
+let aboutModal;
+
+function showReadme() {
+	readmeModal.open();
+}
+
+function showAbout() {
+	aboutModal.open();
+}
+
+onMount(function() {
+	postUrl = location.href;
+	
+	webSocket(wsConfig, key, function({key: k, data, isJson}) {
+		if (k === key) {
+			logs = unshift(logs, {
+				date: new Date(),
+				data,
+				isJson,
+			});
+		}
+	});
+	
+	Prism.highlightAllUnder(document.body);
+});
+</script>
+
+<svelte:head>
+	<title>print_r {key !== "/" ? key : ""}</title>
+</svelte:head>
+
+<style>
+a {
+	color: #0E4D87;
+}
+
+#main {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+#log {
+	flex-grow: 1;
+	padding: 1em;
+}
+
+.log {
+	margin-bottom: 1em;
+	border-radius: 12px;
+	padding: 1em;
+	background: #efefef;
+}
+
+.date {
+	font-size: .8em;
+	color: #505050;
+	margin-bottom: 1em;
+}
+
+.data {
+	font-family: "DejaVu Sans Mono", monospace;
+	white-space: pre;
+}
+
+#info {
+	font-family: "DejaVu Sans Mono", monospace;
+	font-size: 14px;
+	color: #6B6B6B;
+	display: flex;
+	justify-content: space-between;
+	border-top: 1px solid #c1c1c1;
+	padding: .5em;
+	
+	> div:first-child {
+		margin-right: 1em;
+	}
+	
+	> div:last-child {
+		text-align: right;
+	}
+}
+
+span.postUrl {
+	color: #383838;
+}
+
+pre {
+	border: 1px solid lightgray;
+	border-radius: 1px;
+	padding: 1em;
+	overflow-x: auto;
+}
+
+h1, h2, h3 {
+	color: #3F3F3F;
+}
+
+p {
+	color: #383838;
+}
+
+/*code {
+	padding: 2px;
+	background: #eaeaea;
+}*/
+</style>
+
+<Modal bind:this={readmeModal}>
+	<h1>Usage</h1>
+	<p>
+		Send a POST request to this URL with the data you want to log, and it will appear on the page.
+	</p>
+	<h2>Visibility</h2>
+	<p>
+		By default, logs are only sent to browsers connecting from the same IP as the POST request came from.  To see logs from machines outside your local network, use a path starting with <code>/public/</code> (see Paths below).
+	</p>
+	<h2>Paths</h2>
+	<p>
+		You can view this page at any path and POST to any path, and the path determines which logs you see -- if you go to <a href="/example"><code>/example</code></a>, you'll see all logs posted to <code>/example</code>.
+	</p>
+	<h2>Logging</h2>
+	<p>
+		Any POST request will work.  Here are some examples:
+	</p>
+	<h3>cURL</h3>
+	<pre>
+		<code class="language-bash">
+			{`
+				curl -H "Content-Type: application/json" -d '{"test":123}' https://printr.dev/
+			`}
+		</code>
+	</pre>
+	<h3>PHP</h3>
+	<pre>
+		<code class="language-php">
+			{`
+				function printr($data, $path="/") {
+					exec("curl -H \\"Content-Type: application/json\\" -d '" . json_encode($data) . "' https://printr.dev$path");
+				}
+				
+				printr([
+					"test" => 123,
+				]);
+			`}
+		</code>
+	</pre>
+	<h3>Node</h3>
+	<pre>
+		<code class="language-javascript">
+			{`
+				function printr(data, path="/") {
+					require("child_process").exec("curl -H \\"Content-Type: application/json\\" -d '" + JSON.stringify(data) + "' https://printr.dev" + path);
+				}
+				
+				printr({
+					test: 123,
+				});
+			`}
+		</code>
+	</pre>
+	<h3>Non-JSON types</h3>
+	<p>
+		You can also post raw, plaintext, and URL-encoded bodies.  These are rendered as plain text.
+	</p>
+	<h2>Tips</h2>
+	<ul>
+		<li>
+			Logs are not persisted anywhere, they're just relayed directly from POST requests to any matching websockets.  Reloading the page clears the log.
+			<br><br>
+		</li>
+		<li>
+			Paths can be bookmarked and used to separate logs by project, service, environment, or other category.
+		</li>
+	</ul>
+</Modal>
+
+<Modal bind:this={aboutModal}>
+	<h1>About</h1>
+	<h2>What is this for?</h2>
+	<p>
+		I wanted an easy way to do quick-and-dirty debugging from code running on different machines, where it's not always easy to view logs or write to standard out.
+	</p>
+	<p>
+		The idea is to have a consistent way to inspect a variable -- or just check whether a piece of code is running or not -- that's available anywhere.
+	</p>
+	<h2>Source</h2>
+	<a href="https://github.com/user896724/printr">GitHub</a>
+	<h2>Funding</h2>
+	<a class="donate" target="_blank" href="https://www.paypal.com/donate?business=JA4ZUWR6YYN36&currency_code=GBP"><img src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"alt="Donate with PayPal button"></a>
+</Modal>
+
+<div id="main">
+	<div id="log">
+		{#each logs as {date, data, isJson}}
+			<div class="log">
+				<div class="date">
+					{date.toLocaleString()}
+				</div>
+				<div class="data">
+					{#if isJson}
+						{JSON.stringify(data, null, 4)}
+					{:else}
+						{data}
+					{/if}
+				</div>
+			</div>
+		{/each}
+	</div>
+	<div id="info">
+		<div>
+			POST something to
+			<span class="postUrl">{postUrl}</span> to see it here.
+			(<a
+				href="javascript:void(0)"
+				on:click={showReadme}
+			>How?</a>)
+		</div>
+		<div>
+			<a
+				href="javascript:void(0)"
+				on:click={showAbout}
+			>About</a>
+		</div>
+	</div>
+</div>

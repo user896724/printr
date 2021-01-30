@@ -1,0 +1,16 @@
+#!/bin/bash
+
+server=$1
+project=$2
+deployment=$3
+
+hash=`git rev-parse HEAD`
+buildDir=/tmp/sve-$project-$deployment
+
+function run {
+	echo $1
+	$1
+}
+
+run "npx svelte-view-engine build --env prod --build-dir $buildDir"
+run "node scripts/buildScss.js"

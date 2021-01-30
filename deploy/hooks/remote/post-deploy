@@ -1,0 +1,16 @@
+#!/bin/bash
+
+server=$1
+project=$2
+deployment=$3
+
+hash=`git rev-parse HEAD`
+buildDir=/tmp/sve-$project-$deployment
+
+function run {
+	echo $1
+	$1
+}
+
+run "mkdir -p downloads"
+run "git archive --format=tar.gz -o downloads/printr.tar.gz --prefix=printr/ master"

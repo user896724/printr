@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+	<head>
+		${head}
+		<meta name="viewport" content="initial-scale=1.0">
+		<link rel="stylesheet" href="/vendor/prismjs/prism.css">
+		<link rel="stylesheet" href="/assets/css/global/index.css">
+		<link rel="stylesheet" href="${cssPath}?${cssHash}">
+		<script src="/vendor/prismjs/prism.js" data-manual></script>
+	</head>
+	<body>
+		${html}
+		<script src="${jsPath}?${jsHash}"></script>
+		<script>
+			props = ${props};
+			
+			new ${name}({
+				target: document.body,
+				hydrate: true,
+				props,
+			});
+		</script>
+	</body>
+</html>
