@@ -1,38 +1,34 @@
 <script>
-import {createEventDispatcher, onMount} from "svelte";
+import {onMount} from "svelte";
 import sleep from "../utils/sleep";
 import inlineStyle from "../utils/dom/inlineStyle";
 import bodyClick from "../utils/dom/bodyClick";
 
 export let css = null;
 
-let fire = createEventDispatcher();
-
 let box;
-let show = false;
+let showing = false;
 let teardown;
 
-export async function open() {
-	show = true;
+export async function show() {
+	showing = true;
 	
 	await sleep();
 	
-	teardown = bodyClick.on(close, [box]);
+	teardown = bodyClick.on(hide, [box]);
 }
 
-export function close() {
-	show = false;
+export function hide() {
+	showing = false;
 	
 	teardown();
 	
 	teardown = null;
-	
-	fire("close");
 }
 
 function keyup({key}) {
 	if (key === "Escape") {
-		close();
+		hide();
 	}
 }
 </script>
@@ -57,6 +53,7 @@ function keyup({key}) {
 	@include flex-col;
 	
 	align-items: center;
+	width: 100vw;
 	max-height: 85vh;
 	padding: 3em 0 2em;
 }
@@ -90,7 +87,7 @@ function keyup({key}) {
 
 <svelte:window on:keyup={keyup}/>
 
-<div id="anchor" class:hide={!show}>
+<div id="anchor" class:hide={!showing}>
 	<div id="main">
 		<div
 			id="box"

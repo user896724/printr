@@ -1,7 +1,6 @@
 <script>
 import {onMount} from "svelte";
-import {map} from "../utils/collections";
-import dedent from "../utils/dedent";
+import sleep from "../utils/sleep";
 import {unshift} from "../utils/arrayMethods";
 import webSocket from "../utils/webSocket";
 import Modal from "../components/Modal.svelte";
@@ -10,32 +9,54 @@ export let key;
 export let wsConfig;
 
 let postUrl;
+let connected = false;
 let logs = [];
+let welcomeModal;
 let readmeModal;
 let aboutModal;
 
 function showReadme() {
-	readmeModal.open();
+	readmeModal.show();
 }
 
 function showAbout() {
-	aboutModal.open();
+	aboutModal.show();
 }
 
 onMount(function() {
 	postUrl = location.href;
 	
-	webSocket(wsConfig, key, function({key: k, data, isJson}) {
-		if (k === key) {
-			logs = unshift(logs, {
-				date: new Date(),
-				data,
-				isJson,
-			});
-		}
+	webSocket(wsConfig, key, {
+		message({key: k, data, isJson}) {
+			if (k === key) {
+				logs = unshift(logs, {
+					date: new Date(),
+					data,
+					isJson,
+				});
+				
+				welcomeModal.hide();
+			}
+		},
+		
+		async connected() {
+			await sleep(100);
+			
+			connected = true;
+		},
+		
+		disconnected() {
+			connected = false;
+		},
 	});
 	
 	Prism.highlightAllUnder(document.body);
+	
+	if (!document.cookie.includes("visited")) {
+		welcomeModal.show();
+		
+		document.cookie = "visited=1";
+	}
 });
 </script>
 
@@ -77,24 +98,6 @@ a {
 	white-space: pre;
 }
 
-#info {
-	font-family: "DejaVu Sans Mono", monospace;
-	font-size: 14px;
-	color: #6B6B6B;
-	display: flex;
-	justify-content: space-between;
-	border-top: 1px solid #c1c1c1;
-	padding: .5em;
-	
-	> div:first-child {
-		margin-right: 1em;
-	}
-	
-	> div:last-child {
-		text-align: right;
-	}
-}
-
 span.postUrl {
 	color: #383838;
 }
@@ -118,6 +121,44 @@ p {
 	padding: 2px;
 	background: #eaeaea;
 }*/
+
+#info {
+	font-family: "DejaVu Sans Mono", monospace;
+	font-size: 14px;
+	color: #6B6B6B;
+	display: flex;
+	justify-content: space-between;
+	border-top: 1px solid #c1c1c1;
+	padding: .5em;
+	
+	> div:first-child {
+		margin-right: 1em;
+	}
+	
+	> div:last-child {
+		text-align: right;
+	}
+}
+
+#connection {
+	display: inline-flex;
+	align-items: center;
+}
+
+#indicator {
+	$size: 9px;
+	
+	width: $size;
+	height: $size;
+	margin-right: .4em;
+	border-radius: 100px;
+	background: #B7B7B7;
+	
+	&.connected {
+		margin-right: 0;
+		background: #2e9404;
+	}
+}
 </style>
 
 <Modal bind:this={readmeModal}>
@@ -199,9 +240,18 @@ p {
 		The idea is to have a consistent way to inspect a variable -- or just check whether a piece of code is running or not -- that's available anywhere.
 	</p>
 	<h2>Source</h2>
-	<a href="https://github.com/user896724/printr">GitHub</a>
+	<a href="/downloads/printr.tar.gz">printr.tar.gz</a>
+	<h2>Issues</h2>
+	<a target="_blank" href="https://github.com/user896724/printr">GitHub</a>
 	<h2>Funding</h2>
-	<a class="donate" target="_blank" href="https://www.paypal.com/donate?business=JA4ZUWR6YYN36&currency_code=GBP"><img src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"alt="Donate with PayPal button"></a>
+	<a class="donate" target="_blank" href="https://www.paypal.com/donate?business=JA4ZUWR6YYN36&currency_code=GBP"><img src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"alt="Donate with PayPal"></a>
+</Modal>
+
+<Modal bind:this={welcomeModal}>
+	<h1>printr</h1>
+	<p>
+		POST something to {postUrl} and it will appear here.  That's it!
+	</p>
 </Modal>
 
 <div id="main">
@@ -223,6 +273,12 @@ p {
 	</div>
 	<div id="info">
 		<div>
+			{#if !connected}
+				<div id="connection">
+					<div id="indicator" class:connected></div>
+					Connecting...
+				</div>
+			{/if}
 			POST something to
 			<span class="postUrl">{postUrl}</span> to see it here.
 			(<a

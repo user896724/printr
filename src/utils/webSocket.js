@@ -14,22 +14,33 @@ function buildUrl(config, path="/") {
 	return url;
 }
 
-module.exports = function(config, path, onMessage) {
+module.exports = function(config, path, handlers) {
 	let url = buildUrl(config, path);
 	let socket;
 	
-	function reconnect() {
+	function disconnectHandler() {
+		if (handlers.disconnected) {
+			handlers.disconnected();
+		}
+		
 		createSocket();
 	}
 	
 	function messageHandler(message) {
-		onMessage(JSON.parse(message.data));
+		handlers.message(JSON.parse(message.data));
+	}
+	
+	function connectHandler() {
+		if (handlers.connected) {
+			handlers.connected();
+		}
 	}
 	
 	function closeSocket() {
-		socket.removeEventListener("error", reconnect);
-		socket.removeEventListener("close", reconnect);
+		socket.removeEventListener("open", connectHandler);
 		socket.removeEventListener("message", messageHandler);
+		socket.removeEventListener("error", disconnectHandler);
+		socket.removeEventListener("close", disconnectHandler);
 		socket.close();
 	}
 	
@@ -40,9 +51,10 @@ module.exports = function(config, path, onMessage) {
 		
 		socket = new WebSocket(url);
 		
+		socket.addEventListener("open", connectHandler);
 		socket.addEventListener("message", messageHandler);
-		socket.addEventListener("error", reconnect);
-		socket.addEventListener("close", reconnect);
+		socket.addEventListener("error", disconnectHandler);
+		socket.addEventListener("close", disconnectHandler);
 	}
 	
 	function heartbeat() {

@@ -2,3 +2,4 @@ node_modules
 artifacts
 env.js
 deploy/secrets
+downloads

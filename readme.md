@@ -25,7 +25,7 @@ $ curl -H "Content-Type: application/json" -d '{"test":123}' http://localhost:30
 ### Node.JS
 
 ```
-function debug(data) {
+function printr(data) {
 	require("child_process").exec("curl -H 'Content-Type: application/json' -d '" + JSON.stringify(data) + "' http://localhost:3000/");
 }
 ```
@@ -33,7 +33,7 @@ function debug(data) {
 ### PHP
 
 ```
-function debug($data) {
+function printr($data) {
 	exec("curl -H 'Content-Type: application/json' -d '" . json_encode($data) . "' http://localhost:3000");
 }
 ```
