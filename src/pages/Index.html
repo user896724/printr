@@ -8,6 +8,7 @@ import Modal from "../components/Modal.svelte";
 export let key;
 export let wsConfig;
 
+let visited = true;
 let postUrl;
 let connected = false;
 let logs = [];
@@ -23,7 +24,8 @@ function showAbout() {
 	aboutModal.show();
 }
 
-onMount(function() {
+onMount(async function() {
+	visited = document.cookie.includes("visited");
 	postUrl = location.href;
 	
 	webSocket(wsConfig, key, {
@@ -52,10 +54,14 @@ onMount(function() {
 	
 	Prism.highlightAllUnder(document.body);
 	
-	if (!document.cookie.includes("visited")) {
+	if (!visited) {
 		welcomeModal.show();
 		
 		document.cookie = "visited=1";
+		
+		await sleep();
+		
+		visited = true;
 	}
 });
 </script>
@@ -65,6 +71,8 @@ onMount(function() {
 </svelte:head>
 
 <style>
+@import "../css/mixins/abs-sticky";
+
 a {
 	color: #0E4D87;
 }
@@ -75,9 +83,16 @@ a {
 	min-height: 100vh;
 }
 
-#log {
+#logAnchor {
+	position: relative;
 	flex-grow: 1;
+}
+
+#log {
+	@include abs-sticky;
+	
 	padding: 1em;
+	overflow: auto;
 }
 
 .log {
@@ -85,6 +100,10 @@ a {
 	border-radius: 12px;
 	padding: 1em;
 	background: #efefef;
+	
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 
 .date {
@@ -130,6 +149,11 @@ p {
 	justify-content: space-between;
 	border-top: 1px solid #c1c1c1;
 	padding: .5em;
+	-webkit-transition: background-color 1200ms ease-out;
+	
+	&.new {
+		background-color: #E5FFAD;
+	}
 	
 	> div:first-child {
 		margin-right: 1em;
@@ -244,7 +268,9 @@ p {
 	<h2>Issues</h2>
 	<a target="_blank" href="https://github.com/user896724/printr">GitHub</a>
 	<h2>Funding</h2>
-	<a class="donate" target="_blank" href="https://www.paypal.com/donate?business=JA4ZUWR6YYN36&currency_code=GBP"><img src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"alt="Donate with PayPal"></a>
+	<p>
+		<a class="donate" target="_blank" href="https://www.paypal.com/donate?business=JA4ZUWR6YYN36&currency_code=GBP"><img src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif"alt="Donate with PayPal"></a>
+	</p>
 </Modal>
 
 <Modal bind:this={welcomeModal}>
@@ -255,23 +281,25 @@ p {
 </Modal>
 
 <div id="main">
-	<div id="log">
-		{#each logs as {date, data, isJson}}
-			<div class="log">
-				<div class="date">
-					{date.toLocaleString()}
+	<div id="logAnchor">
+		<div id="log">
+			{#each logs as {date, data, isJson}}
+				<div class="log">
+					<div class="date">
+						{date.toLocaleString()}
+					</div>
+					<div class="data">
+						{#if isJson}
+							{JSON.stringify(data, null, 4)}
+						{:else}
+							{data}
+						{/if}
+					</div>
 				</div>
-				<div class="data">
-					{#if isJson}
-						{JSON.stringify(data, null, 4)}
-					{:else}
-						{data}
-					{/if}
-				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</div>
-	<div id="info">
+	<div id="info" class:new={!visited}>
 		<div>
 			{#if !connected}
 				<div id="connection">
