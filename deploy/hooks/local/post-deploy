@@ -1,0 +1,16 @@
+#!/bin/bash
+
+server=$1
+project=$2
+deployment=$3
+
+serverRoot=apps/$project/$deployment
+
+function run {
+	echo $1
+	$1
+}
+
+#run "scp -r $server:$serverRoot/downloads/printr.tar.gz /tmp/"
+#cd ~/projects/printr-github
+# TODO

@@ -113,23 +113,6 @@ onMount(async function() {
 <style>
 @import "../css/mixins/abs-sticky";
 
-.bar {
-	/*font-family: "DejaVu Sans Mono", monospace;*/
-	/*font-size: 14px;*/
-	color: #6B6B6B;
-	display: flex;
-	justify-content: space-between;
-	padding: .5em;
-	
-	code {
-		color: #383838;
-	}
-}
-
-#top {
-	border-bottom: 1px solid #c1c1c1;
-}
-
 a {
 	color: #0E4D87;
 }
@@ -171,6 +154,7 @@ a {
 
 .data {
 	font-family: "DejaVu Sans Mono", monospace;
+	font-size: 14px;
 	white-space: pre;
 }
 
@@ -196,11 +180,24 @@ p {
 
 #info {
 	border-top: 1px solid #c1c1c1;
+	padding: .5em;
 	-webkit-transition: background-color 1200ms ease-out;
+	
+	> div:not(:last-child) {
+		margin-bottom: .5em;
+	}
 	
 	&.new {
 		background-color: #E5FFAD;
 	}
+}
+
+.bar {
+	font-family: "DejaVu Sans Mono", monospace;
+	font-size: 14px;
+	color: #6B6B6B;
+	display: flex;
+	justify-content: space-between;
 	
 	> div:first-child {
 		margin-right: 1em;
@@ -208,6 +205,11 @@ p {
 	
 	> div:last-child {
 		text-align: right;
+	}
+	
+	code {
+		/*font-family: sans-serif;*/
+		color: #383838;
 	}
 }
 
@@ -226,30 +228,13 @@ p {
 	background: #B7B7B7;
 	
 	&.connected {
-		margin-right: 0;
+		/*margin-right: 0;*/
 		background: #2e9404;
 	}
 }
 </style>
 
 <div id="main">
-	<div class="bar" id="top">
-		<div>
-			{#if isPublic}
-				Viewing logs at <code>{key}</code>.  Connected clients: {connectedClients}
-			{:else}
-				Viewing logs at <code>{key}</code> from <code>{ip}</code>.
-			{/if}
-		</div>
-		<div>
-			<a
-				href="javascript:void(0)"
-				on:click={showSettings}
-			>
-				Settings
-			</a>
-		</div>
-	</div>
 	<div id="logAnchor">
 		<div id="log">
 			{#each logs as {date, data, isJson}}
@@ -268,27 +253,58 @@ p {
 			{/each}
 		</div>
 	</div>
-	<div class="bar" id="info" class:new={!visited}>
-		<div>
-			{#if !connected}
-				<div id="connection">
-					<div id="indicator" class:connected></div>
-					Connecting...
-				</div>
-			{/if}
-			POST something to
-			<code>{postUrl}</code> to see it here.
-			(<a
-				href="javascript:void(0)"
-				on:click={showReadme}
-			>How?</a>)
+	<div id="info" class:new={!visited}>
+		<div class="bar">
+			<div>
+				{#if !connected}
+					<div id="connection">
+						<div id="indicator" class:connected></div>
+						Connecting...
+					</div>
+				{/if}
+				POST something to
+				<code>{postUrl}</code> to see it here.
+				{#if isPublic}
+					|
+					Connected clients: {connectedClients}
+				{/if}
+				<!--(<a
+					href="javascript:void(0)"
+					on:click={showReadme}
+				>How?</a>)-->
+			</div>
+			<div>
+				<a
+					href="javascript:void(0)"
+					on:click={showReadme}
+				>Readme</a>
+				|
+				<a
+					href="javascript:void(0)"
+					on:click={showAbout}
+				>About</a>
+				|
+				<a
+					href="javascript:void(0)"
+					on:click={showSettings}
+				>Settings</a>
+			</div>
 		</div>
-		<div>
-			<a
-				href="javascript:void(0)"
-				on:click={showAbout}
-			>About</a>
-		</div>
+		<!--<div class="bar">
+			<div>
+				{#if isPublic}
+					Viewing logs at <code>{key}</code>.  Connected clients: {connectedClients}
+				{:else}
+					Viewing logs at <code>{key}</code> from <code>{ip}</code>.
+				{/if}
+			</div>
+			<div>
+				<a
+					href="javascript:void(0)"
+					on:click={showSettings}
+				>Settings</a>
+			</div>
+		</div>-->
 	</div>
 </div>
 
