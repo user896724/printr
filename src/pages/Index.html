@@ -3,18 +3,29 @@ import {onMount} from "svelte";
 import sleep from "../utils/sleep";
 import {unshift} from "../utils/arrayMethods";
 import webSocket from "../utils/webSocket";
+import inlineStyle from "../utils/dom/inlineStyle";
+import LocalStorage from "../stores/LocalStorage";
+import Input from "../components/Input.svelte";
 import Modal from "../components/Modal.svelte";
 
+export let ip;
 export let key;
 export let wsConfig;
 
 let visited = true;
+let isPublic = key.startsWith("/public/");
+let connectedClients = 1;
 let postUrl;
 let connected = false;
 let logs = [];
 let welcomeModal;
 let readmeModal;
 let aboutModal;
+let settingsModal;
+
+let settings = new LocalStorage("settings", {
+	maxLogHeight: "",
+});
 
 function showReadme() {
 	readmeModal.show();
@@ -24,21 +35,50 @@ function showAbout() {
 	aboutModal.show();
 }
 
+function showSettings() {
+	settingsModal.show();
+}
+
+let handlers = {
+	log({key: k, data, isJson}) {
+		if (k === key) {
+			logs = unshift(logs, {
+				date: new Date(),
+				data,
+				isJson,
+			});
+			
+			welcomeModal.hide();
+		}
+	},
+	
+	clients(n) {
+		connectedClients = n;
+	},
+};
+
+function logStyle(settings) {
+	let {
+		maxLogHeight,
+	} = settings;
+	
+	let maxHeight = maxLogHeight ? {
+		maxHeight: maxLogHeight,
+		overflow: "auto",
+	} : {};
+	
+	return {
+		...maxHeight,
+	};
+}
+
 onMount(async function() {
 	visited = document.cookie.includes("visited");
 	postUrl = location.href;
 	
 	webSocket(wsConfig, key, {
-		message({key: k, data, isJson}) {
-			if (k === key) {
-				logs = unshift(logs, {
-					date: new Date(),
-					data,
-					isJson,
-				});
-				
-				welcomeModal.hide();
-			}
+		message({type, data}) {
+			handlers[type](data);
 		},
 		
 		async connected() {
@@ -72,6 +112,23 @@ onMount(async function() {
 
 <style>
 @import "../css/mixins/abs-sticky";
+
+.bar {
+	/*font-family: "DejaVu Sans Mono", monospace;*/
+	/*font-size: 14px;*/
+	color: #6B6B6B;
+	display: flex;
+	justify-content: space-between;
+	padding: .5em;
+	
+	code {
+		color: #383838;
+	}
+}
+
+#top {
+	border-bottom: 1px solid #c1c1c1;
+}
 
 a {
 	color: #0E4D87;
@@ -117,10 +174,6 @@ a {
 	white-space: pre;
 }
 
-span.postUrl {
-	color: #383838;
-}
-
 pre {
 	border: 1px solid lightgray;
 	border-radius: 1px;
@@ -142,13 +195,7 @@ p {
 }*/
 
 #info {
-	font-family: "DejaVu Sans Mono", monospace;
-	font-size: 14px;
-	color: #6B6B6B;
-	display: flex;
-	justify-content: space-between;
 	border-top: 1px solid #c1c1c1;
-	padding: .5em;
 	-webkit-transition: background-color 1200ms ease-out;
 	
 	&.new {
@@ -184,6 +231,66 @@ p {
 	}
 }
 </style>
+
+<div id="main">
+	<div class="bar" id="top">
+		<div>
+			{#if isPublic}
+				Viewing logs at <code>{key}</code>.  Connected clients: {connectedClients}
+			{:else}
+				Viewing logs at <code>{key}</code> from <code>{ip}</code>.
+			{/if}
+		</div>
+		<div>
+			<a
+				href="javascript:void(0)"
+				on:click={showSettings}
+			>
+				Settings
+			</a>
+		</div>
+	</div>
+	<div id="logAnchor">
+		<div id="log">
+			{#each logs as {date, data, isJson}}
+				<div class="log" style={inlineStyle(logStyle($settings))}>
+					<div class="date">
+						{date.toLocaleString()}
+					</div>
+					<div class="data">
+						{#if isJson}
+							{JSON.stringify(data, null, 4)}
+						{:else}
+							{data}
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+	<div class="bar" id="info" class:new={!visited}>
+		<div>
+			{#if !connected}
+				<div id="connection">
+					<div id="indicator" class:connected></div>
+					Connecting...
+				</div>
+			{/if}
+			POST something to
+			<code>{postUrl}</code> to see it here.
+			(<a
+				href="javascript:void(0)"
+				on:click={showReadme}
+			>How?</a>)
+		</div>
+		<div>
+			<a
+				href="javascript:void(0)"
+				on:click={showAbout}
+			>About</a>
+		</div>
+	</div>
+</div>
 
 <Modal bind:this={readmeModal}>
 	<h1>Usage</h1>
@@ -250,6 +357,10 @@ p {
 		</li>
 		<li>
 			Paths can be bookmarked and used to separate logs by project, service, environment, or other category.
+			<br><br>
+		</li>
+		<li>
+			Set the <code>X-No-Broadcast</code> header to prevent sending logs to any websockets that aren't from the originating IP if there are multiple connections listening on a public path.
 		</li>
 	</ul>
 </Modal>
@@ -280,45 +391,9 @@ p {
 	</p>
 </Modal>
 
-<div id="main">
-	<div id="logAnchor">
-		<div id="log">
-			{#each logs as {date, data, isJson}}
-				<div class="log">
-					<div class="date">
-						{date.toLocaleString()}
-					</div>
-					<div class="data">
-						{#if isJson}
-							{JSON.stringify(data, null, 4)}
-						{:else}
-							{data}
-						{/if}
-					</div>
-				</div>
-			{/each}
-		</div>
-	</div>
-	<div id="info" class:new={!visited}>
-		<div>
-			{#if !connected}
-				<div id="connection">
-					<div id="indicator" class:connected></div>
-					Connecting...
-				</div>
-			{/if}
-			POST something to
-			<span class="postUrl">{postUrl}</span> to see it here.
-			(<a
-				href="javascript:void(0)"
-				on:click={showReadme}
-			>How?</a>)
-		</div>
-		<div>
-			<a
-				href="javascript:void(0)"
-				on:click={showAbout}
-			>About</a>
-		</div>
-	</div>
-</div>
+<Modal bind:this={settingsModal}>
+	<h1>Settings</h1>
+	<Input
+		label="Max. log height (CSS value)" bind:value={$settings.maxLogHeight}
+	/>
+</Modal>

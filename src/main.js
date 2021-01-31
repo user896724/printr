@@ -1,66 +1,19 @@
 let http = require("http");
-let ws = require("ws");
 let express = require("express");
 let bodyParser = require("body-parser");
 let svelteViewEngine = require("svelte-view-engine");
 let _typeof = require("@wildwood/utils/typeof");
 let cmd = require("./utils/cmd");
-let {removeInPlace} = require("./utils/arrayMethods");
 let getIp = require("./utils/getIp");
 let expressAsyncWrap = require("./modules/routing/expressAsyncWrap");
 let loadRoutes = require("./modules/routing/loadRoutes");
+let wsServer = require("./wsServer");
 let config = require("../config");
 
 (async function() {	
 	let app = express();
 	
-	let socket = new ws.Server({
-		port: config.ws.port,
-	});
-	
-	app.clientsByIp = {};
-	app.clientsByKey = {};
-	
-	// remove default EventEmitter limit
-	socket.setMaxListeners(0);
-	
-	socket.on("connection", function(ws, req) {
-		let {clientsByIp, clientsByKey} = app;
-		let ip = getIp(req);
-		let key = req.url.substr(config.ws.path.length);
-		
-		if (!clientsByIp[ip]) {
-			clientsByIp[ip] = [];
-		}
-		
-		clientsByIp[ip].push(ws);
-		
-		if (key !== "/") {
-			if (!clientsByKey[key]) {
-				clientsByKey[key] = [];
-			}
-			
-			clientsByKey[key].push(ws);
-		}
-		
-		ws.on("close", function() {
-			if (clientsByIp[ip]) {
-				removeInPlace(clientsByIp[ip], ws);
-				
-				if (clientsByIp[ip].length === 0) {
-					delete clientsByIp[ip];
-				}
-			}
-			
-			if (clientsByKey[key]) {
-				removeInPlace(clientsByKey[key], ws);
-				
-				if (clientsByKey[key].length === 0) {
-					delete clientsByKey[key];
-				}
-			}
-		});
-	});
+	wsServer(app);
 	
 	expressAsyncWrap(app);
 	

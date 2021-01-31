@@ -19,7 +19,9 @@ module.exports = function(router) {
 		}
 		
 		if (isPublic && clientsByKey[key]) {
-			clients = clients.concat(clientsByKey[key]);
+			if (!req.headers["x-no-broadcast"] || clientsByKey[key].length === 1) {
+				clients = clients.concat(clientsByKey[key]);
+			}
 		}
 		
 		clients = unique(clients);
@@ -28,9 +30,12 @@ module.exports = function(router) {
 		
 		for (let ws of clients) {
 			ws.send(JSON.stringify({
-				key,
-				isJson,
-				data: isJson ? req.body : req.rawBody,
+				type: "log",
+				data: {
+					key,
+					isJson,
+					data: isJson ? req.body : req.rawBody,
+				},
 			}));
 		}
 		

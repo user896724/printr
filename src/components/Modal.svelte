@@ -54,12 +54,14 @@ function keyup({key}) {
 	
 	align-items: center;
 	width: 100vw;
-	max-height: 85vh;
-	padding: 3em 0 2em;
+	height: 0;
 }
 
 #box {
+	flex-shrink: 0;
 	width: 72%;
+	max-height: 80vh;
+	margin: 4em 0 2em;
 	border: 1px solid #cccccc;
 	border-radius: 8px;
 	padding: 1.3em;
